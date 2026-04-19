@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Share,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +47,7 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
       Alert.alert('Error', 'Please enter valid numbers.');
       return;
     }
+    Keyboard.dismiss();
     await updateProfile({
       calorieGoal: c,
       proteinGoal: p,
@@ -66,7 +68,7 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Settings</Text>
 
       <Text style={styles.sectionLabel}>Daily Goals</Text>
