@@ -120,10 +120,6 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
         />
       </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>{saved ? '✓ Saved' : 'Save Changes'}</Text>
-      </TouchableOpacity>
-
       <Text style={styles.sectionLabel}>Tools</Text>
       <TouchableOpacity style={styles.linkRow} onPress={onNavigateCalendar}>
         <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
@@ -196,6 +192,11 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
+    <View style={styles.stickyFooter}>
+      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <Text style={styles.saveButtonText}>{saved ? '✓ Saved' : 'Save Changes'}</Text>
+      </TouchableOpacity>
+    </View>
     </KeyboardAvoidingView>
   );
 }
@@ -271,12 +272,19 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
   toggleTextActive: {
     color: '#fff',
   },
+  stickyFooter: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: 34,
+    backgroundColor: COLORS.background,
+    borderTopWidth: 0.5,
+    borderTopColor: COLORS.separator,
+  },
   saveButton: {
     backgroundColor: COLORS.primary,
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: 16,
     alignItems: 'center',
-    marginTop: SPACING.lg,
   },
   saveButtonText: {
     color: '#fff',
