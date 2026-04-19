@@ -47,10 +47,10 @@ export default function CalorieRing({ consumed, goal, size = 200, strokeWidth = 
         />
       </Svg>
       <View style={styles.textContainer}>
-        <Text style={[styles.remaining, isOver && { color: COLORS.error }]}>
+        <Text style={[styles.remaining, isOver && { color: COLORS.error }, { fontSize: Math.max(size * 0.22, 14) }]}>
           {isOver ? '+' : ''}{isOver ? consumed - goal : remaining}
         </Text>
-        <Text style={styles.label}>{isOver ? 'over' : 'remaining'}</Text>
+        <Text style={[styles.label, { fontSize: Math.max(size * 0.1, 9) }]}>{isOver ? 'over' : 'remaining'}</Text>
       </View>
     </View>
   );
@@ -66,13 +66,11 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
     alignItems: 'center',
   },
   remaining: {
-    fontSize: FONTS.sizes.hero,
     fontWeight: '700',
     color: COLORS.text,
   },
   label: {
-    fontSize: FONTS.sizes.sm,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
 });

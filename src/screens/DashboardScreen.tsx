@@ -131,16 +131,12 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
 
       {/* ── COMPACT PROGRESS ── */}
       <View style={styles.progressCard}>
-        <View style={styles.progressLeft}>
-          <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={80} />
-        </View>
-        <View style={styles.progressRight}>
-          <Text style={styles.remainingText}>{remaining > 0 ? remaining : 0} kcal left</Text>
-          <View style={styles.macroMini}>
-            <MacroBar label="P" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
-            <MacroBar label="C" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
-            <MacroBar label="F" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
-          </View>
+        <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={130} strokeWidth={10} />
+        <Text style={styles.remainingText}>{remaining > 0 ? remaining : 0} kcal left</Text>
+        <View style={styles.macroRow}>
+          <MacroBar label="Protein" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
+          <MacroBar label="Carbs" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
+          <MacroBar label="Fat" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
         </View>
       </View>
 
@@ -297,15 +293,13 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
 
   // Compact progress
   progressCard: {
-    flexDirection: 'row', backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surface,
     marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg, alignItems: 'center', gap: SPACING.lg,
+    padding: SPACING.xl, alignItems: 'center',
     marginBottom: SPACING.md,
   },
-  progressLeft: {},
-  progressRight: { flex: 1 },
-  remainingText: { fontSize: FONTS.sizes.lg, fontWeight: '700', color: COLORS.text, marginBottom: SPACING.sm },
-  macroMini: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
+  remainingText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.textSecondary, marginTop: SPACING.sm, marginBottom: SPACING.md },
+  macroRow: { flexDirection: 'row', gap: SPACING.md, width: '100%' },
 
   // Section
   section: { marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
