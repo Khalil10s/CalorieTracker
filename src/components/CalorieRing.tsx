@@ -47,10 +47,10 @@ export default function CalorieRing({ consumed, goal, size = 200, strokeWidth = 
         />
       </Svg>
       <View style={styles.textContainer}>
-        <Text style={[styles.remaining, isOver && { color: COLORS.error }, { fontSize: Math.max(size * 0.22, 14) }]}>
-          {isOver ? '+' : ''}{isOver ? consumed - goal : remaining}
+        <Text style={[styles.remaining, isOver && { color: COLORS.error }, { fontSize: Math.max(size * 0.18, 14) }]}>
+          {consumed}<Text style={{ fontSize: Math.max(size * 0.12, 10), color: COLORS.textTertiary, fontWeight: '400' }}> /</Text>
         </Text>
-        <Text style={[styles.label, { fontSize: Math.max(size * 0.1, 9) }]}>{isOver ? 'over' : 'remaining'}</Text>
+        <Text style={[styles.label, { fontSize: Math.max(size * 0.09, 9) }]}>{goal} kcal</Text>
       </View>
     </View>
   );

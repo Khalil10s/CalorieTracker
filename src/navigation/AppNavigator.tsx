@@ -36,12 +36,13 @@ type Screen =
   | { name: 'recipes' }
   | { name: 'bmi' };
 
-type TabName = 'dashboard' | 'water' | 'settings';
+type TabName = 'dashboard' | 'water' | 'stats' | 'settings';
 
 const TABS: { name: TabName; icon: string; label: string }[] = [
   { name: 'dashboard', icon: 'home', label: 'Home' },
   { name: 'water', icon: 'water', label: 'Water' },
-  { name: 'settings', icon: 'settings', label: 'Settings' },
+  { name: 'stats', icon: 'stats-chart', label: 'Stats' },
+  { name: 'settings', icon: 'ellipsis-horizontal', label: 'More' },
 ];
 
 export default function AppNavigator() {

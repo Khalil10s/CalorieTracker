@@ -7,7 +7,6 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
-  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,7 +21,7 @@ import MacroBar from '../components/MacroBar';
 import MealRow from '../components/MealRow';
 import { FONTS, SPACING, BORDER_RADIUS } from '../utils/constants';
 import { useTheme } from '../contexts/ThemeContext';
-import { getDateLabel, generateId } from '../utils/helpers';
+import { generateId } from '../utils/helpers';
 
 interface Props {
   onNavigateAddMeal: (mealType: MealType) => void;
@@ -121,55 +120,52 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
-      {/* ── HEADER ── */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.dateLabel}>{getDateLabel(new Date())}</Text>
-          <Text style={styles.greeting}>Hi, {profile?.displayName?.split(' ')[0] || 'there'}</Text>
-        </View>
+      {/* ── SEARCH BAR (TOP) ── */}
+      <View style={styles.searchSection}>
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => onSearch('snack')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search-outline" size={20} color={COLORS.textTertiary} />
+          <Text style={styles.searchPlaceholder}>Search Food...</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => onNavigateAddMeal('snack')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* ── COMPACT PROGRESS ── */}
-      <View style={styles.progressCard}>
-        <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={130} strokeWidth={10} />
-        <Text style={styles.remainingText}>{remaining > 0 ? remaining : 0} kcal left</Text>
-        <View style={styles.macroRow}>
-          <MacroBar label="Protein" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
-          <MacroBar label="Carbs" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
-          <MacroBar label="Fat" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
-        </View>
-      </View>
-
-      {/* ── RECENT FOODS (1-TAP LOG) ── */}
+      {/* ── RECENT FOODS ── */}
       {recentFoods.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>⚡ Recent — tap to log</Text>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={recentFoods}
-            keyExtractor={(item, i) => `${item.id}_${i}`}
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg }}
-            renderItem={({ item }) => (
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>RECENT FOODS</Text>
+          <View style={styles.divider} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentRow}>
+            {recentFoods.map((item, i) => (
               <TouchableOpacity
+                key={`${item.id}_${i}`}
                 style={styles.recentChip}
                 onPress={() => instantLog(item)}
                 activeOpacity={0.6}
               >
                 <Text style={styles.recentName} numberOfLines={1}>{item.foodName}</Text>
-                <Text style={styles.recentCal}>{Math.round(item.calories)} kcal</Text>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </ScrollView>
         </View>
       )}
 
-      {/* ── FAVORITES (1-TAP LOG) ── */}
+      {/* ── FAVORITES ── */}
       {favorites.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>❤️ Favorites — tap to log</Text>
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionTitle}>FAVORITES</Text>
+          <View style={styles.divider} />
           <View style={styles.favGrid}>
-            {favorites.slice(0, 6).map((fav) => (
+            {favorites.slice(0, 8).map((fav) => (
               <TouchableOpacity
                 key={fav.id}
                 style={styles.favBtn}
@@ -183,8 +179,8 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
                 })}
                 activeOpacity={0.6}
               >
-                <Text style={styles.favName} numberOfLines={2}>{fav.name}</Text>
-                <Text style={styles.favCal}>{Math.round(fav.calories)} kcal</Text>
+                <Ionicons name="heart" size={28} color={COLORS.primary} />
+                <Text style={styles.favName} numberOfLines={1}>{fav.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -192,16 +188,26 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
       )}
 
       {/* ── REPEAT YESTERDAY ── */}
-      {yesterdayCount > 0 && (
-        <TouchableOpacity style={styles.repeatBtn} onPress={handleRepeatYesterday} activeOpacity={0.7}>
-          <Ionicons name="repeat" size={22} color="#fff" />
-          <Text style={styles.repeatText}>Repeat Yesterday ({yesterdayCount} meals)</Text>
+      <View style={styles.sectionBlock}>
+        <TouchableOpacity
+          style={[styles.repeatBtn, yesterdayCount === 0 && { opacity: 0.4 }]}
+          onPress={handleRepeatYesterday}
+          activeOpacity={0.7}
+          disabled={yesterdayCount === 0}
+        >
+          <Ionicons name="repeat-outline" size={20} color={COLORS.text} />
+          <Text style={styles.repeatText}>
+            Repeat Yesterday{'\u2019'}s Meals{yesterdayCount > 0 ? ` (${yesterdayCount})` : ''}
+          </Text>
         </TouchableOpacity>
-      )}
+      </View>
 
       {/* ── QUICK ADD CALORIES ── */}
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>⚡ Quick Add</Text>
+      <View style={styles.sectionBlock}>
+        <Text style={styles.sectionTitle}>
+          <Text style={{ fontWeight: '800' }}>QUICK ADD</Text> CALORIES
+        </Text>
+        <View style={styles.divider} />
         <View style={styles.quickCalRow}>
           {[100, 250, 500].map((amt) => (
             <TouchableOpacity
@@ -210,31 +216,40 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
               onPress={() => handleQuickAdd(amt)}
               activeOpacity={0.7}
             >
-              <Text style={styles.quickCalText}>+{amt}</Text>
-              <Text style={styles.quickCalUnit}>kcal</Text>
+              <Text style={styles.quickCalText}>+{amt} <Text style={styles.quickCalUnit}>kcal</Text></Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* ── SEARCH BAR ── */}
-      <TouchableOpacity
-        style={styles.searchBar}
-        onPress={() => onSearch('snack')}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="search" size={18} color={COLORS.textTertiary} />
-        <Text style={styles.searchPlaceholder}>Search foods...</Text>
-      </TouchableOpacity>
+      {/* ── CALORIE SUMMARY ── */}
+      <View style={styles.sectionBlock}>
+        <Text style={styles.sectionTitle}>
+          <Text style={{ fontWeight: '800' }}>CALORIE</Text> SUMMARY
+        </Text>
+        <View style={styles.divider} />
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRing}>
+            <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={150} strokeWidth={12} />
+          </View>
+          <View style={styles.summaryMacros}>
+            <MacroBar label="Protein" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
+            <View style={{ height: SPACING.md }} />
+            <MacroBar label="Carbs" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
+            <View style={{ height: SPACING.md }} />
+            <MacroBar label="Fat" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
+          </View>
+        </View>
+      </View>
 
-      {/* ── TODAY'S MEALS (collapsible) ── */}
+      {/* ── TODAY'S MEALS ── */}
       <TouchableOpacity
         style={styles.mealsToggle}
         onPress={() => setShowMeals(!showMeals)}
         activeOpacity={0.7}
       >
         <Text style={styles.mealsToggleText}>
-          Today's Meals ({meals.length})
+          Today{'\u2019'}s Meals ({meals.length})
         </Text>
         <Ionicons
           name={showMeals ? 'chevron-up' : 'chevron-down'}
@@ -280,83 +295,86 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   content: { paddingBottom: 100 },
 
-  // Header
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: SPACING.lg, paddingTop: 60, paddingBottom: SPACING.sm,
-  },
-  dateLabel: {
-    fontSize: FONTS.sizes.xs, color: COLORS.textSecondary,
-    fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5,
-  },
-  greeting: { fontSize: FONTS.sizes.xl, fontWeight: '700', color: COLORS.text, marginTop: 2 },
-
-  // Compact progress
-  progressCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.lg, borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.xl, alignItems: 'center',
+  // Search bar top
+  searchSection: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: SPACING.lg, paddingTop: 56, gap: SPACING.sm,
     marginBottom: SPACING.md,
   },
-  remainingText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.textSecondary, marginTop: SPACING.sm, marginBottom: SPACING.md },
-  macroRow: { flexDirection: 'row', gap: SPACING.md, width: '100%' },
-
-  // Section
-  section: { marginTop: SPACING.md, paddingHorizontal: SPACING.lg },
-  sectionLabel: {
-    fontSize: FONTS.sizes.sm, fontWeight: '700', color: COLORS.text,
-    marginBottom: SPACING.sm,
+  searchBar: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.xl,
+    paddingHorizontal: SPACING.lg, paddingVertical: 14,
+    gap: SPACING.sm,
+    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 3,
+  },
+  searchPlaceholder: { fontSize: FONTS.sizes.md, color: COLORS.textTertiary, flex: 1 },
+  addBtn: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
+    shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 4,
   },
 
-  // Recent foods horizontal
+  // Section block
+  sectionBlock: {
+    backgroundColor: COLORS.surface, marginHorizontal: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg, padding: SPACING.lg,
+    marginBottom: SPACING.md,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 4, elevation: 1,
+  },
+  sectionTitle: {
+    fontSize: FONTS.sizes.xs, fontWeight: '600', color: COLORS.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 1.2,
+  },
+  divider: {
+    height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.sm,
+  },
+
+  // Recent foods
+  recentRow: { gap: SPACING.sm, paddingVertical: SPACING.xs },
   recentChip: {
-    backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.md, paddingHorizontal: SPACING.lg,
-    marginRight: SPACING.sm, minWidth: 120, alignItems: 'center',
+    backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  recentName: { fontSize: FONTS.sizes.sm, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
-  recentCal: { fontSize: FONTS.sizes.xs, color: COLORS.primary, fontWeight: '700', marginTop: 2 },
+  recentName: { fontSize: FONTS.sizes.sm, fontWeight: '600', color: COLORS.text },
 
-  // Favorites grid
-  favGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  favBtn: {
-    width: '31%', backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md, alignItems: 'center', minHeight: 70, justifyContent: 'center',
+  // Favorites
+  favGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.lg, justifyContent: 'flex-start' },
+  favBtn: { alignItems: 'center', width: 72 },
+  favName: {
+    fontSize: FONTS.sizes.xs, fontWeight: '500', color: COLORS.text,
+    textAlign: 'center', marginTop: SPACING.xs,
   },
-  favName: { fontSize: FONTS.sizes.xs, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
-  favCal: { fontSize: FONTS.sizes.xs, color: COLORS.primary, fontWeight: '700', marginTop: 2 },
 
   // Repeat yesterday
   repeatBtn: {
-    flexDirection: 'row', backgroundColor: COLORS.secondary || '#5856D6',
-    borderRadius: BORDER_RADIUS.md, paddingVertical: 14,
-    marginHorizontal: SPACING.lg, marginTop: SPACING.md,
-    alignItems: 'center', justifyContent: 'center', gap: SPACING.sm,
+    flexDirection: 'row',
+    backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
+    gap: SPACING.sm, borderWidth: 1, borderColor: COLORS.border,
   },
-  repeatText: { color: '#fff', fontSize: FONTS.sizes.md, fontWeight: '700' },
+  repeatText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.text },
 
-  // Quick add calories
+  // Quick add
   quickCalRow: { flexDirection: 'row', gap: SPACING.sm },
   quickCalBtn: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.md,
+    flex: 1, backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.lg, alignItems: 'center',
-    borderWidth: 1.5, borderColor: COLORS.primary,
+    borderWidth: 1, borderColor: COLORS.border,
   },
-  quickCalText: { fontSize: FONTS.sizes.lg, fontWeight: '800', color: COLORS.primary },
-  quickCalUnit: { fontSize: FONTS.sizes.xs, color: COLORS.textSecondary, marginTop: 2 },
+  quickCalText: { fontSize: FONTS.sizes.lg, fontWeight: '700', color: COLORS.text },
+  quickCalUnit: { fontSize: FONTS.sizes.sm, fontWeight: '400', color: COLORS.textSecondary },
 
-  // Search bar
-  searchBar: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md, paddingHorizontal: SPACING.lg, paddingVertical: 14,
-    marginHorizontal: SPACING.lg, marginTop: SPACING.md, gap: SPACING.sm,
-  },
-  searchPlaceholder: { fontSize: FONTS.sizes.md, color: COLORS.textTertiary },
+  // Calorie summary
+  summaryCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg },
+  summaryRing: { flexShrink: 0 },
+  summaryMacros: { flex: 1 },
 
-  // Today's meals collapsible
+  // Today's meals
   mealsToggle: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginHorizontal: SPACING.lg, marginTop: SPACING.xl,
+    marginHorizontal: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.sm,
     paddingVertical: SPACING.sm,
   },
   mealsToggleText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.textSecondary },
