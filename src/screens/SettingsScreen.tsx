@@ -9,6 +9,8 @@ import {
   Alert,
   Share,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,6 +70,7 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
   };
 
   return (
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>Settings</Text>
 
@@ -193,6 +196,7 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNav
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
