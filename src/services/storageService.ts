@@ -276,6 +276,21 @@ export const repeatYesterdayMeals = async (_uid?: string): Promise<number> => {
   return yesterdayMeals.length;
 };
 
+export const repeatLastMeal = async (_uid?: string): Promise<MealEntry | null> => {
+  const meals = await getAllMeals();
+  if (meals.length === 0) return null;
+  const last = meals.sort((a, b) => b.createdAt - a.createdAt)[0];
+  const now = Date.now();
+  const copy: MealEntry = {
+    ...last,
+    id: `${now}_${Math.random().toString(36).slice(2)}`,
+    date: now,
+    createdAt: now,
+  };
+  await addMeal(copy, _uid);
+  return copy;
+};
+
 // ---- Quick Add Calories ----
 
 export const quickAddCalories = async (amount: number, _uid?: string): Promise<void> => {

@@ -7,13 +7,15 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getMealsForDate, deleteMeal, addMeal,
   getRecentFoodsRanked, getFavorites, getYesterdayMeals,
-  repeatYesterdayMeals, quickAddCalories,
+  repeatYesterdayMeals, repeatLastMeal, quickAddCalories,
 } from '../services/storageService';
 import { MealEntry, MealType, FoodItem, MEAL_TYPES } from '../types';
 import CalorieRing from '../components/CalorieRing';
@@ -39,6 +41,7 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
   const [yesterdayCount, setYesterdayCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [showMeals, setShowMeals] = useState(false);
+  const [quickCalInput, setQuickCalInput] = useState('');
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -97,6 +100,27 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
     await load();
   };
 
+  // Custom quick add
+  const handleCustomQuickAdd = async () => {
+    const val = parseInt(quickCalInput);
+    if (!user || isNaN(val) || val <= 0) return;
+    Keyboard.dismiss();
+    await quickAddCalories(val, user.uid);
+    setQuickCalInput('');
+    await load();
+  };
+
+  // Repeat last meal
+  const handleRepeatLastMeal = async () => {
+    if (!user) return;
+    const result = await repeatLastMeal(user.uid);
+    if (result) {
+      await load();
+    } else {
+      Alert.alert('No Meals', 'No previous meals found to repeat.');
+    }
+  };
+
   const handleDelete = (meal: MealEntry) => {
     Alert.alert('Delete', `Remove ${meal.foodName}?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -119,76 +143,59 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      keyboardShouldPersistTaps="handled"
     >
-      {/* ── SEARCH BAR (TOP) ── */}
-      <View style={styles.searchSection}>
+      {/* ⚡ 1. QUICK LOG BAR (PRIMARY ACTION) */}
+      <View style={styles.quickLogBar}>
         <TouchableOpacity
-          style={styles.searchBar}
+          style={styles.addFoodBtn}
           onPress={() => onSearch('snack')}
           activeOpacity={0.7}
         >
-          <Ionicons name="search-outline" size={20} color={COLORS.textTertiary} />
-          <Text style={styles.searchPlaceholder}>Search Food...</Text>
+          <Ionicons name="add-circle" size={22} color="#fff" />
+          <Text style={styles.addFoodText}>Add Food</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.addBtn}
-          onPress={() => onNavigateAddMeal('snack')}
+          style={styles.quickCalBtn}
+          onPress={() => handleQuickAdd(100)}
           activeOpacity={0.7}
         >
-          <Ionicons name="add" size={24} color="#fff" />
+          <Ionicons name="flash" size={18} color={COLORS.primary} />
+          <Text style={styles.quickCalBtnText}>+100 kcal</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── CALORIE SUMMARY ── */}
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionTitle}>
-          <Text style={{ fontWeight: '800' }}>CALORIE</Text> SUMMARY
-        </Text>
-        <View style={styles.divider} />
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRing}>
-            <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={150} strokeWidth={12} />
-          </View>
-          <View style={styles.summaryMacros}>
-            <MacroBar label="Protein" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
-            <View style={{ height: SPACING.md }} />
-            <MacroBar label="Carbs" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
-            <View style={{ height: SPACING.md }} />
-            <MacroBar label="Fat" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
-          </View>
-        </View>
-      </View>
-
-      {/* ── RECENT FOODS ── */}
+      {/* 🔁 2. RECENT FOODS (1-TAP LOG) */}
       {recentFoods.length > 0 && (
-        <View style={styles.sectionBlock}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>RECENT FOODS</Text>
-          <View style={styles.divider} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentRow}>
-            {recentFoods.map((item, i) => (
+          <View style={styles.recentGrid}>
+            {recentFoods.slice(0, 12).map((item, i) => (
               <TouchableOpacity
                 key={`${item.id}_${i}`}
-                style={styles.recentChip}
+                style={styles.recentItem}
                 onPress={() => instantLog(item)}
+                onLongPress={() => onEditMeal(item, item.mealType || 'snack')}
                 activeOpacity={0.6}
               >
-                <Text style={styles.recentName} numberOfLines={1}>{item.foodName}</Text>
+                <Text style={styles.recentCalories}>{Math.round(item.calories)}</Text>
+                <Text style={styles.recentName} numberOfLines={2}>{item.foodName}</Text>
+                <Text style={styles.recentKcal}>kcal</Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
       )}
 
-      {/* ── FAVORITES ── */}
+      {/* ❤️ 3. FAVORITES (1-TAP LOG) */}
       {favorites.length > 0 && (
-        <View style={styles.sectionBlock}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>FAVORITES</Text>
-          <View style={styles.divider} />
           <View style={styles.favGrid}>
-            {favorites.slice(0, 8).map((fav) => (
+            {favorites.slice(0, 10).map((fav) => (
               <TouchableOpacity
                 key={fav.id}
-                style={styles.favBtn}
+                style={styles.favItem}
                 onPress={() => instantLog({
                   foodName: fav.name,
                   calories: fav.calories,
@@ -199,50 +206,99 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
                 })}
                 activeOpacity={0.6}
               >
-                <Ionicons name="heart" size={28} color={COLORS.primary} />
+                <Ionicons name="heart" size={20} color={COLORS.error} />
                 <Text style={styles.favName} numberOfLines={1}>{fav.name}</Text>
+                <Text style={styles.favCal}>{fav.calories} kcal</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
       )}
 
-      {/* ── REPEAT YESTERDAY ── */}
-      <View style={styles.sectionBlock}>
-        <TouchableOpacity
-          style={[styles.repeatBtn, yesterdayCount === 0 && { opacity: 0.4 }]}
-          onPress={handleRepeatYesterday}
-          activeOpacity={0.7}
-          disabled={yesterdayCount === 0}
-        >
-          <Ionicons name="repeat-outline" size={20} color={COLORS.text} />
-          <Text style={styles.repeatText}>
-            Repeat Yesterday{'\u2019'}s Meals{yesterdayCount > 0 ? ` (${yesterdayCount})` : ''}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── QUICK ADD CALORIES ── */}
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionTitle}>
-          <Text style={{ fontWeight: '800' }}>QUICK ADD</Text> CALORIES
-        </Text>
-        <View style={styles.divider} />
-        <View style={styles.quickCalRow}>
-          {[100, 250, 500].map((amt) => (
-            <TouchableOpacity
-              key={amt}
-              style={styles.quickCalBtn}
-              onPress={() => handleQuickAdd(amt)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.quickCalText}>+{amt} <Text style={styles.quickCalUnit}>kcal</Text></Text>
-            </TouchableOpacity>
-          ))}
+      {/* 🔁 4. REPEAT PANEL */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>REPEAT</Text>
+        <View style={styles.repeatRow}>
+          <TouchableOpacity
+            style={[styles.repeatBtn, yesterdayCount === 0 && styles.repeatDisabled]}
+            onPress={handleRepeatYesterday}
+            activeOpacity={0.7}
+            disabled={yesterdayCount === 0}
+          >
+            <Ionicons name="repeat-outline" size={20} color={yesterdayCount > 0 ? COLORS.primary : COLORS.textTertiary} />
+            <Text style={[styles.repeatText, yesterdayCount === 0 && styles.repeatTextDisabled]}>
+              Yesterday{yesterdayCount > 0 ? ` (${yesterdayCount})` : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.repeatBtn}
+            onPress={handleRepeatLastMeal}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-redo-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.repeatText}>Last Meal</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* ── TODAY'S MEALS ── */}
+      {/* 🔍 5. SEARCH (SECONDARY) */}
+      <TouchableOpacity
+        style={styles.searchBar}
+        onPress={() => onSearch('snack')}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="search-outline" size={20} color={COLORS.textTertiary} />
+        <Text style={styles.searchPlaceholder}>Search food...</Text>
+      </TouchableOpacity>
+
+      {/* ⚡ QUICK ADD CALORIES */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>QUICK ADD CALORIES</Text>
+        <View style={styles.quickAddRow}>
+          {[100, 250, 500].map((amt) => (
+            <TouchableOpacity
+              key={amt}
+              style={styles.quickAddChip}
+              onPress={() => handleQuickAdd(amt)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.quickAddChipText}>+{amt}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.quickAddCustom}>
+            <TextInput
+              style={styles.quickAddInput}
+              placeholder="Custom"
+              placeholderTextColor={COLORS.textTertiary}
+              value={quickCalInput}
+              onChangeText={setQuickCalInput}
+              keyboardType="number-pad"
+              returnKeyType="done"
+              onSubmitEditing={handleCustomQuickAdd}
+            />
+            <TouchableOpacity onPress={handleCustomQuickAdd} style={styles.quickAddGo}>
+              <Ionicons name="add" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* 📊 6. TODAY SUMMARY (MINIMAL) */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TODAY</Text>
+        <View style={styles.summaryCard}>
+          <CalorieRing consumed={Math.round(totalCalories)} goal={calGoal} size={120} strokeWidth={10} />
+          <View style={styles.summaryMacros}>
+            <MacroBar label="Protein" current={totalProtein} goal={profile?.proteinGoal || 150} color={COLORS.protein} />
+            <View style={{ height: SPACING.sm }} />
+            <MacroBar label="Carbs" current={totalCarbs} goal={profile?.carbsGoal || 250} color={COLORS.carbs} />
+            <View style={{ height: SPACING.sm }} />
+            <MacroBar label="Fat" current={totalFat} goal={profile?.fatGoal || 65} color={COLORS.fat} />
+          </View>
+        </View>
+      </View>
+
+      {/* TODAY'S MEALS (COLLAPSIBLE) */}
       <TouchableOpacity
         style={styles.mealsToggle}
         onPress={() => setShowMeals(!showMeals)}
@@ -293,96 +349,281 @@ export default function DashboardScreen({ onNavigateAddMeal, onEditMeal, onSearc
 
 const makeStyles = (COLORS: any) => StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
-  content: { paddingBottom: 100 },
+  content: { paddingBottom: 100, paddingTop: 56 },
 
-  // Search bar top
-  searchSection: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: SPACING.lg, paddingTop: 56, gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  searchBar: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: COLORS.surface, borderRadius: BORDER_RADIUS.xl,
-    paddingHorizontal: SPACING.lg, paddingVertical: 14,
+  // ⚡ Quick Log Bar
+  quickLogBar: {
+    flexDirection: 'row',
+    paddingHorizontal: SPACING.lg,
     gap: SPACING.sm,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8, elevation: 3,
+    marginBottom: SPACING.lg,
   },
-  searchPlaceholder: { fontSize: FONTS.sizes.md, color: COLORS.textTertiary, flex: 1 },
-  addBtn: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 4,
+  addFoodBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    backgroundColor: COLORS.primary,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addFoodText: {
+    color: '#fff',
+    fontSize: FONTS.sizes.lg,
+    fontWeight: '700',
+  },
+  quickCalBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  quickCalBtnText: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
 
-  // Section block
-  sectionBlock: {
-    backgroundColor: COLORS.surface, marginHorizontal: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg, padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 4, elevation: 1,
+  // Sections
+  section: {
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   sectionTitle: {
-    fontSize: FONTS.sizes.xs, fontWeight: '600', color: COLORS.textSecondary,
-    textTransform: 'uppercase', letterSpacing: 1.2,
-  },
-  divider: {
-    height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.sm,
-  },
-
-  // Recent foods
-  recentRow: { gap: SPACING.sm, paddingVertical: SPACING.xs },
-  recentChip: {
-    backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
-    borderWidth: 1, borderColor: COLORS.border,
-  },
-  recentName: { fontSize: FONTS.sizes.sm, fontWeight: '600', color: COLORS.text },
-
-  // Favorites
-  favGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.lg, justifyContent: 'flex-start' },
-  favBtn: { alignItems: 'center', width: 72 },
-  favName: {
-    fontSize: FONTS.sizes.xs, fontWeight: '500', color: COLORS.text,
-    textAlign: 'center', marginTop: SPACING.xs,
+    fontSize: FONTS.sizes.xs,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: SPACING.sm,
   },
 
-  // Repeat yesterday
-  repeatBtn: {
+  // Recent Foods grid
+  recentGrid: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
-    paddingVertical: 14, alignItems: 'center', justifyContent: 'center',
-    gap: SPACING.sm, borderWidth: 1, borderColor: COLORS.border,
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
   },
-  repeatText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.text },
-
-  // Quick add
-  quickCalRow: { flexDirection: 'row', gap: SPACING.sm },
-  quickCalBtn: {
-    flex: 1, backgroundColor: COLORS.background, borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.lg, alignItems: 'center',
-    borderWidth: 1, borderColor: COLORS.border,
+  recentItem: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    alignItems: 'center',
+    minWidth: 90,
+    flex: 1,
+    maxWidth: '31%',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 1,
   },
-  quickCalText: { fontSize: FONTS.sizes.lg, fontWeight: '700', color: COLORS.text },
-  quickCalUnit: { fontSize: FONTS.sizes.sm, fontWeight: '400', color: COLORS.textSecondary },
+  recentCalories: {
+    fontSize: FONTS.sizes.lg,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  recentName: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: '600',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  recentKcal: {
+    fontSize: 9,
+    color: COLORS.textTertiary,
+    fontWeight: '600',
+    marginTop: 1,
+  },
 
-  // Calorie summary
-  summaryCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.lg },
-  summaryRing: { flexShrink: 0 },
+  // Favorites grid
+  favGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  favItem: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    alignItems: 'center',
+    minWidth: 80,
+    flex: 1,
+    maxWidth: '31%',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  favName: {
+    fontSize: FONTS.sizes.xs,
+    fontWeight: '600',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  favCal: {
+    fontSize: 9,
+    fontWeight: '500',
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+
+  // Repeat panel
+  repeatRow: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  repeatBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  repeatDisabled: {
+    opacity: 0.4,
+  },
+  repeatText: {
+    fontSize: FONTS.sizes.sm,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  repeatTextDisabled: {
+    color: COLORS.textTertiary,
+  },
+
+  // Search bar
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 14,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.lg,
+    gap: SPACING.sm,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  searchPlaceholder: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textTertiary,
+    flex: 1,
+  },
+
+  // Quick add calories row
+  quickAddRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.sm,
+  },
+  quickAddChip: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  quickAddChipText: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  quickAddCustom: {
+    flexDirection: 'row',
+    flex: 1,
+    minWidth: 100,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    overflow: 'hidden',
+  },
+  quickAddInput: {
+    flex: 1,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
+    fontSize: FONTS.sizes.sm,
+    color: COLORS.text,
+  },
+  quickAddGo: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Today summary
+  summaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 4,
+    elevation: 1,
+  },
   summaryMacros: { flex: 1 },
 
   // Today's meals
   mealsToggle: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginHorizontal: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.sm,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
     paddingVertical: SPACING.sm,
   },
-  mealsToggleText: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.textSecondary },
+  mealsToggleText: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
   mealsList: { paddingHorizontal: SPACING.lg },
   mealTypeHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: SPACING.md, marginBottom: SPACING.xs,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: SPACING.md,
+    marginBottom: SPACING.xs,
   },
-  mealTypeLabel: { fontSize: FONTS.sizes.md, fontWeight: '600', color: COLORS.text },
-  noMeals: { fontSize: FONTS.sizes.md, color: COLORS.textTertiary, textAlign: 'center', marginTop: SPACING.lg },
+  mealTypeLabel: {
+    fontSize: FONTS.sizes.md,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  noMeals: {
+    fontSize: FONTS.sizes.md,
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+    marginTop: SPACING.lg,
+  },
 });
