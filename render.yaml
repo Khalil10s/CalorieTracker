@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: CalorieTracker
+    runtime: static
+    buildCommand: npx expo export --platform web
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
