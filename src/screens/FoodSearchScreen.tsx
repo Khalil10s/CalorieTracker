@@ -18,12 +18,13 @@ import { useTheme } from '../contexts/ThemeContext';
 interface Props {
   mealType: MealType;
   onSelectFood: (food: FoodItem) => void;
+  onInstantLog?: (food: FoodItem) => void;
   onManualEntry: () => void;
   onBarcodeScan: () => void;
   onBack: () => void;
 }
 
-export default function FoodSearchScreen({ mealType, onSelectFood, onManualEntry, onBarcodeScan, onBack }: Props) {
+export default function FoodSearchScreen({ mealType, onSelectFood, onInstantLog, onManualEntry, onBarcodeScan, onBack }: Props) {
   const COLORS = useTheme().colors;
   const styles = makeStyles(COLORS);
   const [query, setQuery] = useState('');
@@ -61,10 +62,16 @@ export default function FoodSearchScreen({ mealType, onSelectFood, onManualEntry
   }, [query]);
 
   const renderItem = ({ item }: { item: FoodItem }) => (
-    <TouchableOpacity style={styles.item} onPress={() => onSelectFood(item)} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.item}
+      onPress={() => onInstantLog ? onInstantLog(item) : onSelectFood(item)}
+      onLongPress={() => onSelectFood(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.itemInfo}>
         <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
         <Text style={styles.itemMeta}>{item.servingSize} · P:{Math.round(item.protein)}g C:{Math.round(item.carbs)}g F:{Math.round(item.fat)}g</Text>
+        {onInstantLog && <Text style={styles.tapHint}>Tap = log · Hold = edit</Text>}
       </View>
       <View style={styles.itemCal}>
         <Text style={styles.itemCalText}>{Math.round(item.calories)}</Text>
@@ -126,7 +133,13 @@ export default function FoodSearchScreen({ mealType, onSelectFood, onManualEntry
               <View style={styles.favSection}>
                 <Text style={styles.favTitle}>⭐ Favorites</Text>
                 {favorites.map((fav) => (
-                  <TouchableOpacity key={fav.id} style={styles.item} onPress={() => onSelectFood(fav)} activeOpacity={0.7}>
+                  <TouchableOpacity
+                    key={fav.id}
+                    style={styles.item}
+                    onPress={() => onInstantLog ? onInstantLog(fav) : onSelectFood(fav)}
+                    onLongPress={() => onSelectFood(fav)}
+                    activeOpacity={0.7}
+                  >
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName} numberOfLines={1}>{fav.name}</Text>
                       <Text style={styles.itemMeta}>{fav.servingSize} · P:{Math.round(fav.protein)}g C:{Math.round(fav.carbs)}g F:{Math.round(fav.fat)}g</Text>
@@ -261,5 +274,11 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
     fontWeight: '600',
     color: COLORS.text,
     marginBottom: SPACING.sm,
+  },
+  tapHint: {
+    fontSize: FONTS.sizes.xs - 1,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 });

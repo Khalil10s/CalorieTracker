@@ -19,9 +19,12 @@ import { FONTS, SPACING, BORDER_RADIUS } from '../utils/constants';
 interface Props {
   onNavigateBMI: () => void;
   onNavigateRecipes: () => void;
+  onNavigateCalendar: () => void;
+  onNavigateStats: () => void;
+  onNavigateWeight: () => void;
 }
 
-export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes }: Props) {
+export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes, onNavigateCalendar, onNavigateStats, onNavigateWeight }: Props) {
   const { colors: COLORS, mode, toggle: toggleTheme } = useTheme();
   const styles = makeStyles(COLORS);
   const { profile, updateProfile } = useAuth();
@@ -117,6 +120,21 @@ export default function SettingsScreen({ onNavigateBMI, onNavigateRecipes }: Pro
       </TouchableOpacity>
 
       <Text style={styles.sectionLabel}>Tools</Text>
+      <TouchableOpacity style={styles.linkRow} onPress={onNavigateCalendar}>
+        <Ionicons name="calendar-outline" size={22} color={COLORS.primary} />
+        <Text style={styles.linkText}>Calendar</Text>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.linkRow} onPress={onNavigateStats}>
+        <Ionicons name="stats-chart-outline" size={22} color={COLORS.primary} />
+        <Text style={styles.linkText}>Statistics</Text>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.linkRow} onPress={onNavigateWeight}>
+        <Ionicons name="scale-outline" size={22} color={COLORS.primary} />
+        <Text style={styles.linkText}>Weight Tracker</Text>
+        <Ionicons name="chevron-forward" size={20} color={COLORS.textTertiary} />
+      </TouchableOpacity>
       <TouchableOpacity style={styles.linkRow} onPress={onNavigateBMI}>
         <Ionicons name="body-outline" size={22} color={COLORS.primary} />
         <Text style={styles.linkText}>BMI Calculator</Text>

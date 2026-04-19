@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Text, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { FoodItem, MealType, MealEntry } from '../types';
+import { addMeal } from '../services/storageService';
+import { generateId } from '../utils/helpers';
 import DashboardScreen from '../screens/DashboardScreen';
 import FoodSearchScreen from '../screens/FoodSearchScreen';
 import FoodDetailScreen from '../screens/FoodDetailScreen';
@@ -34,19 +36,18 @@ type Screen =
   | { name: 'recipes' }
   | { name: 'bmi' };
 
-type TabName = 'dashboard' | 'water' | 'stats' | 'calendar' | 'settings';
+type TabName = 'dashboard' | 'water' | 'settings';
 
 const TABS: { name: TabName; icon: string; label: string }[] = [
   { name: 'dashboard', icon: 'home', label: 'Home' },
   { name: 'water', icon: 'water', label: 'Water' },
-  { name: 'stats', icon: 'stats-chart', label: 'Stats' },
-  { name: 'calendar', icon: 'calendar', label: 'Calendar' },
   { name: 'settings', icon: 'settings', label: 'Settings' },
 ];
 
 export default function AppNavigator() {
   const COLORS = useTheme().colors;
   const styles = makeStyles(COLORS);
+  const { user } = useAuth();
   const [screen, setScreen] = useState<Screen>({ name: 'dashboard' });
   const [activeTab, setActiveTab] = useState<TabName>('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -74,6 +75,9 @@ export default function AppNavigator() {
             onEditMeal={(meal, mealType) =>
               setScreen({ name: 'editMeal', meal, mealType })
             }
+            onSearch={(mealType) =>
+              setScreen({ name: 'foodSearch', mealType })
+            }
           />
         );
       case 'weight':
@@ -85,6 +89,9 @@ export default function AppNavigator() {
           <SettingsScreen
             onNavigateBMI={() => setScreen({ name: 'bmi' })}
             onNavigateRecipes={() => setScreen({ name: 'recipes' })}
+            onNavigateCalendar={() => setScreen({ name: 'calendar' })}
+            onNavigateStats={() => setScreen({ name: 'stats' })}
+            onNavigateWeight={() => setScreen({ name: 'weight' })}
           />
         );
       case 'water':
@@ -98,6 +105,24 @@ export default function AppNavigator() {
             onSelectFood={(food) =>
               setScreen({ name: 'foodDetail', food, mealType: screen.mealType })
             }
+            onInstantLog={async (food) => {
+              if (!user) return;
+              const now = Date.now();
+              await addMeal({
+                id: generateId(),
+                foodName: food.name,
+                calories: food.calories,
+                protein: food.protein,
+                carbs: food.carbs,
+                fat: food.fat,
+                servingSize: food.servingSize,
+                quantity: 1,
+                mealType: screen.mealType,
+                date: now,
+                createdAt: now,
+              }, user.uid);
+              goToDashboard();
+            }}
             onManualEntry={() =>
               setScreen({ name: 'manualEntry', mealType: screen.mealType })
             }
@@ -157,7 +182,7 @@ export default function AppNavigator() {
     }
   };
 
-  const showTabs = ['dashboard', 'weight', 'calendar', 'settings', 'water', 'stats'].includes(screen.name);
+  const showTabs = ['dashboard', 'water', 'settings', 'weight', 'calendar', 'stats'].includes(screen.name);
 
   return (
     <View style={styles.container}>

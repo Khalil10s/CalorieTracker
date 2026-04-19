@@ -227,6 +227,74 @@ export const getStreak = async (_uid?: string): Promise<number> => {
   return streak;
 };
 
+// ---- Recent Foods (frequency + recency ranked) ----
+
+export const getRecentFoodsRanked = async (_uid?: string, limit: number = 20): Promise<MealEntry[]> => {
+  const meals = await getAllMeals();
+  // Build frequency map by foodName
+  const freq: Record<string, { meal: MealEntry; count: number; lastDate: number }> = {};
+  for (const m of meals) {
+    const key = m.foodName.toLowerCase();
+    if (!freq[key] || m.date > freq[key].lastDate) {
+      freq[key] = { meal: m, count: (freq[key]?.count || 0) + 1, lastDate: m.date };
+    } else {
+      freq[key].count++;
+    }
+  }
+  // Sort by weighted score: frequency * 2 + recency
+  const now = Date.now();
+  return Object.values(freq)
+    .sort((a, b) => {
+      const scoreA = a.count * 2 + (1 - (now - a.lastDate) / (30 * 86400000));
+      const scoreB = b.count * 2 + (1 - (now - b.lastDate) / (30 * 86400000));
+      return scoreB - scoreA;
+    })
+    .slice(0, limit)
+    .map((f) => f.meal);
+};
+
+// ---- Repeat Yesterday ----
+
+export const getYesterdayMeals = async (_uid?: string): Promise<MealEntry[]> => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return getMealsForDate(yesterday, _uid);
+};
+
+export const repeatYesterdayMeals = async (_uid?: string): Promise<number> => {
+  const yesterdayMeals = await getYesterdayMeals(_uid);
+  if (yesterdayMeals.length === 0) return 0;
+  const now = Date.now();
+  for (const m of yesterdayMeals) {
+    await addMeal({
+      ...m,
+      id: `${now}_${Math.random().toString(36).slice(2)}`,
+      date: now,
+      createdAt: now,
+    }, _uid);
+  }
+  return yesterdayMeals.length;
+};
+
+// ---- Quick Add Calories ----
+
+export const quickAddCalories = async (amount: number, _uid?: string): Promise<void> => {
+  const now = Date.now();
+  await addMeal({
+    id: `${now}_${Math.random().toString(36).slice(2)}`,
+    foodName: `Quick add +${amount}`,
+    calories: amount,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    servingSize: `${amount} kcal`,
+    quantity: 1,
+    mealType: 'snack',
+    date: now,
+    createdAt: now,
+  }, _uid);
+};
+
 // ---- Export ----
 
 export const exportAllDataCSV = async (_uid?: string): Promise<string> => {
