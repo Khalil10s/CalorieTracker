@@ -21,6 +21,7 @@ export default function CalorieRing({ consumed, goal, size = 200, strokeWidth = 
   const strokeDashoffset = circumference * (1 - progress);
   const remaining = Math.max(goal - consumed, 0);
   const isOver = consumed > goal;
+  const over = consumed - goal;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
@@ -47,10 +48,24 @@ export default function CalorieRing({ consumed, goal, size = 200, strokeWidth = 
         />
       </Svg>
       <View style={styles.textContainer}>
-        <Text style={[styles.remaining, isOver && { color: COLORS.error }, { fontSize: Math.max(size * 0.18, 14) }]}>
-          {consumed}<Text style={{ fontSize: Math.max(size * 0.12, 10), color: COLORS.textTertiary, fontWeight: '400' }}> /</Text>
+        {isOver ? (
+          <>
+            <Text style={[styles.bigNumber, { fontSize: Math.max(size * 0.22, 18), color: COLORS.error }]}>
+              +{Math.round(over)}
+            </Text>
+            <Text style={[styles.label, { fontSize: Math.max(size * 0.08, 9) }]}>kcal over</Text>
+          </>
+        ) : (
+          <>
+            <Text style={[styles.bigNumber, { fontSize: Math.max(size * 0.22, 18) }]}>
+              {Math.round(remaining)}
+            </Text>
+            <Text style={[styles.label, { fontSize: Math.max(size * 0.08, 9) }]}>kcal left</Text>
+          </>
+        )}
+        <Text style={[styles.subLabel, { fontSize: Math.max(size * 0.065, 8) }]}>
+          {Math.round(consumed)} eaten
         </Text>
-        <Text style={[styles.label, { fontSize: Math.max(size * 0.09, 9) }]}>{goal} kcal</Text>
       </View>
     </View>
   );
@@ -65,12 +80,18 @@ const makeStyles = (COLORS: any) => StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
   },
-  remaining: {
-    fontWeight: '700',
+  bigNumber: {
+    fontWeight: '800',
     color: COLORS.text,
   },
   label: {
     color: COLORS.textSecondary,
+    fontWeight: '600',
     marginTop: 1,
+  },
+  subLabel: {
+    color: COLORS.textTertiary,
+    fontWeight: '500',
+    marginTop: 2,
   },
 });
